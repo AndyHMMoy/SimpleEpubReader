@@ -1,12 +1,7 @@
-package Controllers;
-
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
-import javafx.collections.ObservableMap;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
@@ -22,7 +17,6 @@ import org.ini4j.Profile.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.text.DecimalFormat;
 import java.util.*;
 
 public class ClientController {
@@ -58,6 +52,7 @@ public class ClientController {
 
     public void initialize() {
 
+        // Creates a custom listCell in the listview to include a button on the right for the removal of books
         bookListView.setCellFactory(param -> new ListCell<String>() {
             final Label label = new Label();
             final Region region = new Region();
@@ -83,6 +78,7 @@ public class ClientController {
                 }
             }
         });
+        // Sets the double click action of the cell to open the book selected
         bookListView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 try {
@@ -94,6 +90,7 @@ public class ClientController {
                 }
             }
         });
+        // Sets the double click action to bring the user to the bookmarked section of the book
         bookmarkListView.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 try {
@@ -106,6 +103,7 @@ public class ClientController {
         refreshBookList();
     }
 
+    // Updates the book list on the left listView
     public void refreshBookList() {
         ObservableList<File> bookList = FXCollections.observableArrayList(Arrays.asList(new File("books").listFiles()));
         ObservableList<String> books = FXCollections.observableArrayList();
@@ -116,6 +114,7 @@ public class ClientController {
         bookListView.setItems(books);
     }
 
+    // Refreshes the bookmark list on the right listView to match the book selected
     public void refreshBookmarkList() throws IOException {
         Ini ini = new Ini(new File("bookmarks.ini"));
         Section section = ini.get(currentBook);
@@ -127,6 +126,7 @@ public class ClientController {
         bookmarkListView.setItems(bookmarks);
     }
 
+    // Adds the directory to a label when selected the import directory
     @FXML
     public void addDirectory() {
         DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -136,6 +136,7 @@ public class ClientController {
         directoryLabel.setText(importPath);
     }
 
+    // Creates the series based on directory selected and series name of choice
     @FXML
     public void addSeries() throws IOException {
         epub.addAllBooksToSeries(directoryLabel.getText());
@@ -146,18 +147,22 @@ public class ClientController {
         directoryLabel.setText("");
     }
 
+    // Deletes the '.book' file and updates the book list on the view
     public void removeSeries(String title) {
         File file = new File("books/" + title + ".book");
         file.delete();
         refreshBookList();
     }
 
+    // Renders the book into the webView which parses all the html and formats the book automatically
     public void displaySeries(String title) throws IOException {
         File file = new File("books/" + title + ".book");
+        Ini ini = new Ini(new File("bookmarks.ini"));
         String textString = new String(Files.readAllBytes(Paths.get(file.getAbsolutePath())));
         webView.getEngine().loadContent(textString);
     }
 
+    // Adds a bookmark for a series and stores it into the 'bookmarks.ini' file
     public void setBookmark() throws IOException {
         if (currentBook != null) {
             Ini ini = new Ini(new File("bookmarks.ini"));
@@ -165,9 +170,11 @@ public class ClientController {
             LinkedHashMap<String, Integer> bookmarks = new LinkedHashMap<>();
             String bookmarkName = bookmarkTextField.getText();
             ini.put(currentBook, bookmarkName, getVScrollValue(webView));
+            // If there are currently no bookmarks then add a new bookmark
             if (section.size() < 2) {
                 ini.put(currentBook, "latestProgressForSeries", getVScrollValue(webView));
             } else {
+                // Otherwise add a new bookmark and get the highest value from the bookmarks to set as the 'latestProgressForSeries'
                 for (String optionName : section.keySet()) {
                     String optionValue = section.get(optionName);
                     bookmarks.put(optionName, Integer.valueOf(optionValue));
@@ -188,16 +195,19 @@ public class ClientController {
         bookmarkTextField.clear();
     }
 
+    // Scrolls to the section the bookmark is saved at
     public void visitBookmarkLocation(String bookmarkName) throws IOException {
         Ini ini = new Ini(new File("bookmarks.ini"));
         int value = Integer.valueOf(ini.get(currentBook, bookmarkName));
         scrollTo(webView, 0, value);
     }
 
+    // Helper method to scroll to a section
     public void scrollTo(WebView view, int x, int y) {
         view.getEngine().executeScript("window.scrollTo(" + x + ", " + y + ")");
     }
 
+    // Gets the scroll value at the current section
     public int getVScrollValue(WebView view) {
         return (Integer) view.getEngine().executeScript("document.body.scrollTop");
     }
